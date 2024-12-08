@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Status</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="theme-toggle">
+    <button id="theme-switch" class="button">
+      <span id="theme-icon">🌞</span> Switch to Dark Theme
+    </button>
+  </div>
+
+  <div class="container">
+    <h1>Server Status</h1>
+    <div class="switch">
+      <input type="checkbox" id="toggle-switch" {{ 'disabled' if not admin_logged_in else '' }}>
+      <label for="toggle-switch" class="slider"></label>
+    </div>
+    <p id="status-text">Status: Loading...</p>
+    
+    <div id="admin-panel" class="admin-panel" {{ 'style="display:none;"' if admin_logged_in else '' }}>
+      <h2>Admin Panel</h2>
+      <input type="password" id="admin-password" placeholder="Enter Admin Password">
+      <button class="button" onclick="loginAdmin()">Login</button>
+      <p id="error-msg" style="display:none;">Invalid password, try again.</p>
+    </div>
+    
+    <button id="admin-btn" class="button" onclick="openAdmin()" {{ 'style="display:none;"' if admin_logged_in else '' }}>Admin Login</button>
+  </div>
+  
+  <div class="downloads">
+  <button class="download-button" onclick="downloadFile('file1.zip')">
+    <span>Download File 1</span>
+  </button>
+  <button class="download-button" onclick="downloadFile('file2.zip')">
+    <span>Download File 2</span>
+  </button>
+  <button class="download-button" onclick="downloadFile('file3.zip')">
+    <span>Download File 3</span>
+  </button>
+</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.0/socket.io.min.js"></script>
+  <script src="{{ url_for('static', filename='Script.js') }}"></script>
+
+  <script>
+    const socket = io();
+
+    // Получаем статус с сервера при подключении
+    socket.on('status_updated', function(data) {
+      const status = data.status;
+      document.getElementById("toggle-switch").checked = status;
+      document.getElementById("status-text").innerText = `Status: ${status ? "ON" : "OFF"}`;
+    });
+
+    // Обновление статуса на сервере при изменении переключателя
+    document.getElementById("toggle-switch").addEventListener("change", function () {
+      const status = this.checked;
+      fetch('/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: status })
+      });
+    });
+
+    // Логин администратора
+    function loginAdmin() {
+      const password = document.getElementById("admin-password").value;
+      fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Скрываем панель входа и показываем кнопку переключателя
+          document.getElementById("admin-panel").style.display = "none";
+          document.getElementById("admin-btn").style.display = "none";
+          document.getElementById("toggle-switch").disabled = false;
+        } else {
+          // Отображаем ошибку
+          document.getElementById("error-msg").style.display = "block";
+        }
+      });
+    }
+  </script>
+</body>
+</html>
