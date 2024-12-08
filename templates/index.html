@@ -30,18 +30,19 @@
     
     <button id="admin-btn" class="button" onclick="openAdmin()" {{ 'style="display:none;"' if admin_logged_in else '' }}>Admin Login</button>
   </div>
-  
-  <div class="downloads">
-  <button class="download-button" onclick="downloadFile('file1.zip')">
+
+ <div class="downloads">
+  <a href="https://drive.google.com/file/d/12SaU5RwZjVlO0ZfZUPE-SgvUtnLf9Xqk/view?usp=sharing" target="_blank" class="download-button">
     <span>Download File 1</span>
-  </button>
-  <button class="download-button" onclick="downloadFile('file2.zip')">
+  </a>
+  <a href="https://drive.google.com/file/d/1Y9zw4vz4PLiVCJ_ROOx7LnhaJOMub9WS/view?usp=sharing" target="_blank" class="download-button">
     <span>Download File 2</span>
-  </button>
-  <button class="download-button" onclick="downloadFile('file3.zip')">
+  </a>
+  <a href="file3.zip" class="download-button">
     <span>Download File 3</span>
-  </button>
+  </a>
 </div>
+
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.0/socket.io.min.js"></script>
   <script src="{{ url_for('static', filename='Script.js') }}"></script>
