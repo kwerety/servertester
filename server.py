@@ -4,7 +4,7 @@ from flask_cors import CORS
 import os
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
-CORS(app)  # Разрешить доступ с клиентского домена
+CORS(app)  # Разрешение запросов с клиентского домена
 socketio = SocketIO(app, cors_allowed_origins="*")  # WebSocket поддержка CORS
 
 # Хранение состояния сервера
@@ -24,7 +24,8 @@ def get_status():
 @app.route("/status", methods=["POST"])
 def update_status():
     global server_status, admin_logged_in
-    if admin_logged_in:  # Только если администратор авторизован
+    auth_header = request.headers.get("Authorization")
+    if auth_header == "Bearer YOUR_TOKEN":  # Замените YOUR_TOKEN на реальный токен
         data = request.get_json()
         if "status" in data:
             server_status["status"] = data["status"]

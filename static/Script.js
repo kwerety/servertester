@@ -1,9 +1,28 @@
-// Правильный пароль для админ-панели
 const correctPassword = "admin123";
-
-// URL сервера для взаимодействия
 const API_URL = "https://servertester.onrender.com";
-const socket = io(API_URL, { transports: ["websocket"] }); // Подключение через WebSocket
+
+// Подключение к WebSocket
+if (typeof socket === "undefined") {
+  const socket = io(API_URL, {
+    transports: ["polling", "websocket"], // Для диагностики используем оба транспорта
+    reconnectionAttempts: 5,
+    timeout: 20000,
+  });
+
+  socket.on("connect", () => {
+    console.log("Connected to WebSocket server");
+  });
+
+  socket.on("status_updated", (data) => {
+    console.log("Status updated:", data);
+    document.getElementById("toggle-switch").checked = data.status;
+    document.getElementById("status-text").innerText = `Status: ${data.status ? "ON" : "OFF"}`;
+  });
+
+  socket.on("disconnect", () => {
+    console.error("Disconnected from WebSocket server");
+  });
+}
 
 // Загрузка статуса сервера
 async function fetchStatus() {
@@ -25,7 +44,10 @@ async function updateStatus(newStatus) {
   try {
     const response = await fetch(`${API_URL}/status`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer YOUR_TOKEN`, // Замените YOUR_TOKEN на реальный токен
+      },
       body: JSON.stringify({ status: newStatus }),
     });
     if (response.ok) {
@@ -38,21 +60,6 @@ async function updateStatus(newStatus) {
     console.error("Error updating server status:", error);
   }
 }
-
-// Обработка WebSocket событий
-socket.on("connect", () => {
-  console.log("Connected to WebSocket server");
-});
-
-socket.on("status_updated", (data) => {
-  console.log("Status updated:", data);
-  document.getElementById("toggle-switch").checked = data.status;
-  document.getElementById("status-text").innerText = `Status: ${data.status ? "ON" : "OFF"}`;
-});
-
-socket.on("disconnect", () => {
-  console.error("Disconnected from WebSocket server");
-});
 
 // Открытие админ-панели
 function openAdmin() {

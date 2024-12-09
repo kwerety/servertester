@@ -1,59 +1,117 @@
-from flask import Flask, send_from_directory, jsonify, render_template, request
-from flask_socketio import SocketIO, emit
-import os
+const correctPassword = "admin123";
+const API_URL = "https://servertester.onrender.com";
 
-app = Flask(__name__, static_folder='static', template_folder='templates')
-socketio = SocketIO(app)
+// Подключение к WebSocket
+if (typeof socket === "undefined") {
+  const socket = io(API_URL, {
+    transports: ["polling", "websocket"], // Для диагностики используем оба транспорта
+    reconnectionAttempts: 5,
+    timeout: 20000,
+  });
 
-# Хранение состояния сервера
-server_status = {"status": False}
-admin_logged_in = False  # Флаг авторизации администратора
+  socket.on("connect", () => {
+    console.log("Connected to WebSocket server");
+  });
 
-@app.route("/", methods=["GET"])
-def home():
-    return render_template("index.html", admin_logged_in=admin_logged_in)
+  socket.on("status_updated", (data) => {
+    console.log("Status updated:", data);
+    document.getElementById("toggle-switch").checked = data.status;
+    document.getElementById("status-text").innerText = `Status: ${data.status ? "ON" : "OFF"}`;
+  });
 
-# Получение статуса
-@app.route("/status", methods=["GET"])
-def get_status():
-    return jsonify(server_status)
+  socket.on("disconnect", () => {
+    console.error("Disconnected from WebSocket server");
+  });
+}
 
-# Изменение статуса
-@app.route("/status", methods=["POST"])
-def update_status():
-    global server_status, admin_logged_in
-    if admin_logged_in:  # Только если администратор авторизован
-        data = request.get_json()
-        if "status" in data:
-            server_status["status"] = data["status"]
-            socketio.emit('status_updated', server_status)
-            return jsonify({"success": True, "status": server_status["status"]})
-    return jsonify({"success": False, "error": "Unauthorized"}), 403
+// Загрузка статуса сервера
+async function fetchStatus() {
+  try {
+    const response = await fetch(`${API_URL}/status`);
+    const data = await response.json();
+    const status = data.status;
 
-# Логин администратора
-@app.route("/login", methods=["POST"])
-def login_admin():
-    global admin_logged_in
-    data = request.get_json()
-    password = data.get("password")
-    if password == "admin123":  # Правильный пароль
-        admin_logged_in = True
-        return jsonify({"success": True})
-    return jsonify({"success": False, "error": "Invalid password"}), 403
+    document.getElementById("toggle-switch").checked = status;
+    document.getElementById("status-text").innerText = `Status: ${status ? "ON" : "OFF"}`;
+  } catch (error) {
+    document.getElementById("status-text").innerText = "Status: Error fetching status";
+    console.error("Error fetching server status:", error);
+  }
+}
 
-# Маршрут для скачивания файлов
-@app.route("/download/<filename>", methods=["GET"])
-def download_file(filename):
-    try:
-        return send_from_directory(os.getcwd(), filename, as_attachment=True)
-    except FileNotFoundError:
-        return jsonify({"success": False, "error": "File not found"}), 404
+// Обновление статуса сервера
+async function updateStatus(newStatus) {
+  try {
+    const response = await fetch(`${API_URL}/status`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer YOUR_TOKEN`, // Замените YOUR_TOKEN на реальный токен
+      },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (response.ok) {
+      document.getElementById("status-text").innerText = `Status: ${newStatus ? "ON" : "OFF"}`;
+    } else {
+      const errorData = await response.json();
+      console.error("Error updating server status:", errorData.error);
+    }
+  } catch (error) {
+    console.error("Error updating server status:", error);
+  }
+}
 
-# Обработчик для обработки событий с клиента (WebSocket)
-@socketio.on('connect')
-def handle_connect():
-    print("Client connected")
-    emit('status_updated', server_status)
+// Открытие админ-панели
+function openAdmin() {
+  document.getElementById("admin-panel").classList.add("active");
+}
 
-if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+// Проверка пароля в админ-панели
+async function loginAdmin() {
+  const passwordField = document.getElementById("admin-password");
+  const adminPanel = document.getElementById("admin-panel");
+  const errorMsg = document.getElementById("error-msg");
+
+  try {
+    const response = await fetch(`${API_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: passwordField.value }),
+    });
+
+    if (response.ok) {
+      document.getElementById("toggle-switch").disabled = false;
+      adminPanel.classList.add("fadeOut");
+      setTimeout(() => adminPanel.classList.remove("active", "fadeOut"), 500);
+    } else {
+      errorMsg.style.display = "block";
+    }
+  } catch (error) {
+    console.error("Error during login:", error);
+    errorMsg.style.display = "block";
+  }
+}
+
+// Переключение темы
+document.getElementById("theme-switch").addEventListener("click", function () {
+  const body = document.body;
+  body.classList.toggle("dark-theme");
+
+  this.innerHTML = body.classList.contains("dark-theme")
+    ? '<span id="theme-icon">🌙</span> Switch to Light Theme'
+    : '<span id="theme-icon">🌞</span> Switch to Dark Theme';
+});
+
+// Обновление статуса при изменении переключателя
+document.getElementById("toggle-switch").addEventListener("change", function () {
+  updateStatus(this.checked);
+});
+
+// Скачивание файлов
+function downloadFile(fileName) {
+  const downloadUrl = `${API_URL}/download/${fileName}`;
+  window.location.href = downloadUrl;
+}
+
+// Загрузка начального состояния
+fetchStatus();
