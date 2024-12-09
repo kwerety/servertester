@@ -1,9 +1,11 @@
 from flask import Flask, send_from_directory, jsonify, render_template, request
 from flask_socketio import SocketIO, emit
+from flask_cors import CORS
 import os
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
-socketio = SocketIO(app)
+CORS(app)  # Разрешить доступ с клиентского домена
+socketio = SocketIO(app, cors_allowed_origins="*")  # WebSocket поддержка CORS
 
 # Хранение состояния сервера
 server_status = {"status": False}
@@ -26,7 +28,7 @@ def update_status():
         data = request.get_json()
         if "status" in data:
             server_status["status"] = data["status"]
-            socketio.emit('status_updated', server_status)
+            socketio.emit("status_updated", server_status)
             return jsonify({"success": True, "status": server_status["status"]})
     return jsonify({"success": False, "error": "Unauthorized"}), 403
 
@@ -50,10 +52,14 @@ def download_file(filename):
         return jsonify({"success": False, "error": "File not found"}), 404
 
 # Обработчик для обработки событий с клиента (WebSocket)
-@socketio.on('connect')
+@socketio.on("connect")
 def handle_connect():
     print("Client connected")
-    emit('status_updated', server_status)
+    emit("status_updated", server_status)
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    print("Client disconnected")
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000, debug=True)

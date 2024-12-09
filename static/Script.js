@@ -3,6 +3,7 @@ const correctPassword = "admin123";
 
 // URL сервера для взаимодействия
 const API_URL = "https://servertester.onrender.com";
+const socket = io(API_URL, { transports: ["websocket"] }); // Подключение через WebSocket
 
 // Загрузка статуса сервера
 async function fetchStatus() {
@@ -22,16 +23,36 @@ async function fetchStatus() {
 // Обновление статуса сервера
 async function updateStatus(newStatus) {
   try {
-    await fetch(`${API_URL}/status`, {
+    const response = await fetch(`${API_URL}/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
-    document.getElementById("status-text").innerText = `Status: ${newStatus ? "ON" : "OFF"}`;
+    if (response.ok) {
+      document.getElementById("status-text").innerText = `Status: ${newStatus ? "ON" : "OFF"}`;
+    } else {
+      const errorData = await response.json();
+      console.error("Error updating server status:", errorData.error);
+    }
   } catch (error) {
     console.error("Error updating server status:", error);
   }
 }
+
+// Обработка WebSocket событий
+socket.on("connect", () => {
+  console.log("Connected to WebSocket server");
+});
+
+socket.on("status_updated", (data) => {
+  console.log("Status updated:", data);
+  document.getElementById("toggle-switch").checked = data.status;
+  document.getElementById("status-text").innerText = `Status: ${data.status ? "ON" : "OFF"}`;
+});
+
+socket.on("disconnect", () => {
+  console.error("Disconnected from WebSocket server");
+});
 
 // Открытие админ-панели
 function openAdmin() {
@@ -39,16 +60,27 @@ function openAdmin() {
 }
 
 // Проверка пароля в админ-панели
-function loginAdmin() {
+async function loginAdmin() {
   const passwordField = document.getElementById("admin-password");
   const adminPanel = document.getElementById("admin-panel");
   const errorMsg = document.getElementById("error-msg");
 
-  if (passwordField.value === correctPassword) {
-    document.getElementById("toggle-switch").disabled = false;
-    adminPanel.classList.add("fadeOut");
-    setTimeout(() => adminPanel.classList.remove("active", "fadeOut"), 500);
-  } else {
+  try {
+    const response = await fetch(`${API_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: passwordField.value }),
+    });
+
+    if (response.ok) {
+      document.getElementById("toggle-switch").disabled = false;
+      adminPanel.classList.add("fadeOut");
+      setTimeout(() => adminPanel.classList.remove("active", "fadeOut"), 500);
+    } else {
+      errorMsg.style.display = "block";
+    }
+  } catch (error) {
+    console.error("Error during login:", error);
     errorMsg.style.display = "block";
   }
 }
