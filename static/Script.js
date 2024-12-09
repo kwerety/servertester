@@ -2,7 +2,7 @@
 const correctPassword = "admin123";
 
 // URL сервера для взаимодействия
-const API_URL = "http://26.190.244.219:5000";
+const API_URL = "https://servertester.onrender.com";
 
 // Загрузка статуса сервера
 async function fetchStatus() {
